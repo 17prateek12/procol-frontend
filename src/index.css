@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ... */
+.scrollable-table {
+    max-height: 400px; /* or whatever height you need */
+    overflow-y: auto;  /* enables vertical scrolling */
+    overflow-x: auto;  /* enables horizontal scrolling */
+  }
+  
+  /* Customize the scrollbar */
+  .scrollable-table::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+  }
+  
+  .scrollable-table::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3); /* Thumb color */
+    border-radius: 10px; /* Round the corners of the scrollbar thumb */
+    border: 2px solid transparent; /* Optional: adds a border effect */
+  }
+  
+  .scrollable-table::-webkit-scrollbar-track {
+    background: purple; /* Track color */
+    border-radius: 10px;
+  }
+  
+  /* Optional: Hover effect */
+  .scrollable-table::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.5); /* Darken thumb on hover */
+  }
