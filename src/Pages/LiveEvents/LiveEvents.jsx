@@ -1,20 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getLiveEvent } from '../../Api/Event/event';
+import EventCard from "../../components/EventCard";
 
 function LiveEvents() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [liveEvents, setLiveEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [tab, setTab] = useState('liveEvents');
 
-  const TestData = [
-    { "eventName": "Music Concert", "duration": "2 hours", "startTime": "2024-12-15T18:00:00", "bidders": [ { "name": "John Doe", "bidAmount": "$150", "time": "2024-12-15T18:10:00" }, { "name": "Jane Smith", "bidAmount": "$200", "time": "2024-12-15T18:20:00" }, { "name": "Tom Brown", "bidAmount": "$250", "time": "2024-12-15T18:40:00" } ] },
-    { "eventName": "Tech Conference", "duration": "3 hours", "startTime": "2024-12-16T09:00:00", "bidders": [ { "name": "Alice White", "bidAmount": "$500", "time": "2024-12-16T09:10:00" }, { "name": "David Green", "bidAmount": "$550", "time": "2024-12-16T09:30:00" } ] },
-    { "eventName": "Art Exhibition", "duration": "1.5 hours", "startTime": "2024-12-17T15:30:00", "bidders": [ { "name": "Eve Black", "bidAmount": "$100", "time": "2024-12-17T15:40:00" }, { "name": "Grace Blue", "bidAmount": "$120", "time": "2024-12-17T15:50:00" } ] },
-    { "eventName": "Movie Premiere", "duration": "2.5 hours", "startTime": "2024-12-18T20:00:00", "bidders": [ { "name": "Jack Red", "bidAmount": "$300", "time": "2024-12-18T20:30:00" }, { "name": "Lily Pink", "bidAmount": "$350", "time": "2024-12-18T20:45:00" } ] },
-    { "eventName": "Cooking Workshop", "duration": "4 hours", "startTime": "2024-12-19T11:00:00", "bidders": [ { "name": "Oliver Grey", "bidAmount": "$75", "time": "2024-12-19T11:15:00" }, { "name": "Sophia Yellow", "bidAmount": "$100", "time": "2024-12-19T11:30:00" } ] },
-    { "eventName": "Dance Performance", "duration": "1.5 hours", "startTime": "2024-12-20T17:00:00", "bidders": [ { "name": "Nina Violet", "bidAmount": "$200", "time": "2024-12-20T17:10:00" }, { "name": "Ethan Black", "bidAmount": "$220", "time": "2024-12-20T17:25:00" } ] },
-    { "eventName": "Gaming Tournament", "duration": "6 hours", "startTime": "2024-12-21T10:00:00", "bidders": [ { "name": "Mason Green", "bidAmount": "$600", "time": "2024-12-21T10:30:00" }, { "name": "Isabella White", "bidAmount": "$650", "time": "2024-12-21T11:00:00" } ] },
-    { "eventName": "Charity Gala", "duration": "3 hours", "startTime": "2024-12-22T19:00:00", "bidders": [ { "name": "Benjamin Brown", "bidAmount": "$500", "time": "2024-12-22T19:15:00" }, { "name": "Emma Blue", "bidAmount": "$550", "time": "2024-12-22T19:30:00" } ] }
-  ];
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const { liveEvents, upcomingEvents } = await getLiveEvent();
+        setLiveEvents(liveEvents);
+        console.log("live event", liveEvents)
+        setUpcomingEvents(upcomingEvents);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch events.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -22,50 +38,77 @@ function LiveEvents() {
 
   const handleEventClick = (event) => {
     setSelectedEvent(event);
-    setModalOpen(true); 
+    setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
   };
 
-  const filteredData = TestData.filter(val => 
+  const filteredEvents = (tab === 'liveEvents' ? liveEvents : upcomingEvents)?.filter((val) =>
     val.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     val.duration.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    val.startTime.toLowerCase().includes(searchQuery.toLowerCase())
+    new Date(val.startTime).toLocaleString().toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <>
-      <div className='w-[100%] p-2'>
-        <form className='flex justify-center mt-4 mb-8'>
-          <input
-            type="search"
-            placeholder='Search for an event'
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className='rounded border-2 p-2 mr-2 w-[70%]'
-          />
-          <button type="button" className='px-4 bg-black p-2 text-white rounded'>Search</button>
-        </form>
-
-        <div>
-          {filteredData.map((val, key) => (
-            <div
-              key={key}
-              className='border-2 flex justify-evenly rounded-md p-4 my-2 cursor-pointer bg-black text-white'
-              onClick={() => handleEventClick(val)}
-            >
-              <h1 className="text-xl font-bold">{val.eventName}</h1>
-              <h2>{val.duration}</h2>  
-              <h2> {val.startTime}</h2>
-            </div>
-          ))}
-        </div>
+    <div className="w-full p-4">
+      {/* Tabs */}
+      <div className="flex justify-center mb-6">
+        <button
+          onClick={() => setTab('liveEvents')}
+          className={`px-4 py-2 mx-2 ${tab === 'liveEvents' ? 'bg-black text-white' : 'bg-gray-200 text-black'} rounded`}
+        >
+          Live Events
+        </button>
+        <button
+          onClick={() => setTab('upcomingEvents')}
+          className={`px-4 py-2 mx-2 ${tab === 'upcomingEvents' ? 'bg-black text-white' : 'bg-gray-200 text-black'} rounded`}
+        >
+          Upcoming Events
+        </button>
       </div>
 
-     
-    </>
+      <form className="flex justify-center mt-4 mb-8">
+        <input
+          type="search"
+          placeholder="Search for an event"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className="rounded border-2 p-2 mr-2 w-3/4"
+        />
+        <button type="button" className="px-4 bg-black p-2 text-white rounded">
+          Search
+        </button>
+      </form>
+
+      {loading ? (
+        <p className="text-center text-gray-500">Loading...</p>
+      ) : error ? (
+        <p className="text-center text-red-500">{error}</p>
+      ) : filteredEvents?.length === 0 ? (
+        <p className="text-center text-gray-500">No events found.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredEvents?.map((event) => (
+            <EventCard
+            key={event.id || event._id} // Use unique key
+                        event={event} // Pass event object as prop
+                        type={"participate"}
+            />
+            //<div
+            //  key={index}
+            //  className="border rounded-md p-4 cursor-pointer bg-white shadow-lg hover:shadow-xl transition duration-300"
+            //  onClick={() => handleEventClick(event)}
+            //>
+            //  <h1 className="text-lg font-bold mb-2">{event.eventName}</h1>
+            //  <p className="text-sm text-gray-700 mb-2">Duration: {event.duration}</p>
+            //  <p className="text-sm text-gray-700 mb-2">Start Time: {new Date(event.startTime).toLocaleString()}</p>
+            //</div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

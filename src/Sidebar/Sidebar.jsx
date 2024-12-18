@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 export const SidebarData = [
   { title: "Home", link: '/home' },
   { title: "Create Event", link: '/home/createEvent' },
+  { title: "My Event", link: '/home/myevent' },
   { title: "Live Event", link: '/home/liveEvent' },
   { title: "History", link: '/home/history' },
   { title: "Logout", link: '/home/logout' }
@@ -11,7 +12,7 @@ export const SidebarData = [
 
 const Sidebar = () => {
   return (
-    <div className='bg-black text-white w-[250px] min-h-screen'>
+    <div className='bg-black text-white w-[250px] h-[100vh] relative'>
       <ul className="pt-12 md:pt-12 w-full">
         {SidebarData.map((val, key) => (
           <li className='my-8' key={key}>

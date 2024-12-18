@@ -6,6 +6,9 @@ import LiveEvents from '../LiveEvents/LiveEvents';
 import EventTable from '../../components/EventTable';
 import Sidebar from '../../Sidebar/Sidebar';
 import History from '../History/History';
+import Logout from '../Logout/Logout';
+import MyEvent from '../MyEvent/MyEvent';
+import EventCreatorTable from '../EventCreatorTable/EventCreatorTable';
 
 const LandingPage = () => {
   return (
@@ -18,6 +21,9 @@ const LandingPage = () => {
           <Route path="/liveEvent" element={<LiveEvents />} />
           <Route path="/history" element={<History />} />
           <Route path="/event-table" element={<EventTable />} />
+          <Route path='/logout' element={<Logout />} />
+          <Route path='/myevent' element={<MyEvent />} />
+          <Route path='/event-room/:eventId' element={<EventCreatorTable />} />
         </Routes>
       </div>
     </div>

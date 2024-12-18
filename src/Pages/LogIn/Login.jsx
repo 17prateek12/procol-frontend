@@ -36,7 +36,7 @@ const handleSubmit = async (e) => {
 
   try {
     // Call the login API
-    const { accessToken, user } = await loginUser(formData); // Assuming loginUser returns token and user info
+    const { token, user } = await loginUser(formData); // Assuming loginUser returns token and user info
     
     // Save user info or token if needed (already handled in loginUser via cookies)
     console.log('User logged in successfully:', user);

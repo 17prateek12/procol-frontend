@@ -1,55 +1,58 @@
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import Input from '../../components/Input';
+import Button from '../../components/Button';
+import { MdDelete } from "react-icons/md";
+import * as XLSX from 'xlsx';
+import { CreateEvent } from '../../Api/Event/event';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from 'react-router-dom';
+
+
+
 
 function CreateEvents() {
-
-  const API_URL = import.meta.env.VITE_BACKEND_URL;
-  const authToken = Cookies.get('authToken');
-  const userId = Cookies.get('userId');
-
-
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [columns, setColumns] = useState(["Item Name", "Item Quantity"]);
-  const [rows, setRows] = useState([]);
-  const [newItem, setNewItem] = useState({
-    itemName: '',
-    itemQuantity: ''
-  });
-  const [description, setDescription] = useState([]);
-  const [eventName, setEventName] = useState('');
-
+  const authToken = Cookies.get("authToken");
+  const userId = Cookies.get("userId");
   const navigate = useNavigate();
 
-  const handleStartTimeChange = (e) => {
-    setStartTime(e.target.value);
-  };
+  // Event state
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [description, setDescription] = useState("");
 
-  const handleEndTimeChange = (e) => {
-    setEndTime(e.target.value);
-  };
+  // Dynamic Columns and Rows
+  const [columns, setColumns] = useState(["Column 1", "Column 2"]); // Default columns
+  const [rows, setRows] = useState([]); // Each row is a map-like object
+  const [newRow, setNewRow] = useState({});
+
+
+  const [submittedData, setSubmittedData] = useState([]);
 
   const handleColumnAdd = () => {
     const newColumn = `Col ${columns.length + 1}`;
     setColumns([...columns, newColumn]);
-
-    setNewItem((prevItem) => ({
-      ...prevItem,
-      [newColumn.toLowerCase().replace(" ", "")]: '', // Add the new column to newItem state
+  
+    // Update newRow with the new column key
+    setNewRow((prevRow) => ({
+      ...prevRow,
+      [newColumn.toLowerCase().replace(/\s+/g, '')]: '',
     }));
   };
+  
 
-  const handleInputChange = (e) => {
+  const handleColInputChange = (e) => {
     const { name, value } = e.target;
-
     setNewItem((prevItem) => ({
       ...prevItem,
-      [name]: value, // Update the corresponding field
+      [name.toLowerCase().replace(/\s+/g, '')]: value, // Normalize keys
     }));
   };
+
 
   const handleColumnDelete = (colIndex) => {
     const updatedColumns = columns.filter((_, index) => index !== colIndex);
@@ -58,66 +61,36 @@ function CreateEvents() {
     setRows(updatedRows);
   };
 
-
-  const createEvent = async () => {
-    if (!authToken) {
-      console.error('No token found, user might not be logged in.');
-      return;
-    }
-
-    const formattedStartTime = new Date(`${new Date().toISOString().split('T')[0]}T${startTime}`);
-    const formattedEndTime = new Date(`${new Date().toISOString().split('T')[0]}T${endTime}`);
-  
-    const eventData = {
-      eventName,
-      startTime: formattedStartTime,
-      endTime: formattedEndTime,
-      createdBy: userId,
-      description:description,
-      items: rows.map((row) => {
-        const itemName = row["itemname"]; // Adjust key based on normalized name
-        const quantity = row["itemquantity"];
-        const dynamicFields = { ...row };
-  
-        delete dynamicFields.itemname; // Remove fixed fields
-        delete dynamicFields.itemquantity;
-  
-        return {
-          itemName,
-          quantity,
-          dynamicFields,
-        };
-      }),
-    };
-  
-    try {
-      const response = await axios.post(`${API_URL}/api/event/event-create`, eventData, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      });
-      console.log("Event created successfully:", response.data);
-      navigate("/home/event-table");
-    } catch (error) {
-      console.error("Error creating event: ", error.response.data);
-    }
-  };
-
-
   const handleRowAdd = () => {
-    // Create a new row object based on columns
-    const newRow = columns.reduce((row, col) => {
-      const key = col.toLowerCase().replace(" ", ""); // Normalize column names
-      row[key] = newItem[key] || ''; // Use existing value or empty string
-      return row;
+    // Ensure newRow has keys for all columns
+    const newRowData = columns.reduce((acc, col) => {
+      const key = col.toLowerCase().replace(/\s+/g, ''); // Normalize column name
+      acc[key] = newRow[key] || ''; // Default to empty string
+      return acc;
     }, {});
-
-    // Add the new row to the table
-    setRows([...rows, newRow]);
-
-    // Reset the newItem state to clear input fields
-    setNewItem({});
+  
+    // Add newRowData to rows
+    setRows((prevRows) => [...prevRows, newRowData]);
+  
+    // Reset newRow inputs
+    const resetNewRow = columns.reduce((acc, col) => {
+      acc[col.toLowerCase().replace(/\s+/g, '')] = '';
+      return acc;
+    }, {});
+    setNewRow(resetNewRow);
   };
+
+  
+  const handleRowInputChange = (e, col) => {
+    const { value } = e.target;
+    const key = col.toLowerCase().replace(/\s+/g, ''); // Normalize column name
+  
+    setNewRow((prevRow) => ({
+      ...prevRow,
+      [key]: value,
+    }));
+  };
+  
 
   const handleCellEdit = (rowIndex, colKey, value) => {
     const updatedRows = [...rows];
@@ -127,143 +100,182 @@ function CreateEvents() {
     };
     setRows(updatedRows);
   };
-  
-
-
 
   const handleColumnEdit = (index, event) => {
+    const newName = event.target.value.trim();
+    if (!newName || columns.includes(newName)) {
+      toast.error('Column name must be unique and non-empty.');
+      return;
+    }
     const updatedColumns = [...columns];
-    updatedColumns[index] = event.target.value;
+    updatedColumns[index] = newName;
     setColumns(updatedColumns);
   };
+
 
   const handleRowDelete = (rowIndex) => {
     const updatedRows = rows.filter((_, index) => index !== rowIndex);
     setRows(updatedRows);
   };
 
+
+  // Handle Excel Upload
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
+  
     const reader = new FileReader();
     reader.onload = (event) => {
       const data = new Uint8Array(event.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-
+      const workbook = XLSX.read(data, { type: "array" });
+  
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
+  
       if (jsonData.length > 0) {
-        const headers = jsonData[0]; // First row as headers
-        const rows = jsonData.slice(1).map(row =>
-          headers.reduce((acc, header, index) => {
-            acc[header] = row[index] || '';
-            return acc;
-          }, {})
+        const headers = jsonData[0].map((header) => header.trim());
+        const normalizedHeaders = headers.map((header) =>
+          header.toLowerCase().replace(/\s+/g, '')
         );
-
+  
+        // Map rows to key-value objects and handle undefined cells
+        const dataRows = jsonData.slice(1)
+          .filter((row) => row.some((cell) => cell !== undefined && cell !== ""))
+          .map((row) =>
+            normalizedHeaders.reduce((acc, header, index) => {
+              acc[header] = row[index] !== undefined ? row[index] : "";
+              return acc;
+            }, {})
+          );
+  
+        console.log("Headers:", normalizedHeaders);
+        console.log("Rows:", dataRows);
+  
         setColumns(headers);
-        setRows(rows);
+        setRows(dataRows);
       }
     };
     reader.readAsArrayBuffer(file);
   };
+  
 
-  const handleSubmit = () => {
-    if (!eventName || !startTime || !endTime || rows.length === 0) {
-      alert('Please fill out all required fields and add at least one item.');
+  // Submit the Form
+  const handleSubmit = async () => {
+    if (!eventName || !eventDate || !startTime || !endTime) {
+      toast.error("Please provide all required event details.");
       return;
     }
 
-    if (new Date(startTime) >= new Date(endTime)) {
-      alert('Start time must be earlier than end time.');
+    const startDateTime = new Date(`${eventDate}T${startTime}`);
+    const endDateTime = new Date(`${eventDate}T${endTime}`);
+
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+      toast.error("Invalid date or time.");
       return;
     }
 
-    createEvent();
+    const eventData = {
+      eventName,
+      eventDate: new Date(eventDate),
+      startTime: startDateTime.toISOString(),
+      endTime: endDateTime.toISOString(),
+      description,
+      columns: columns, // Dynamic column names
+      rows: rows, // Rows as maps
+      createdBy: userId,
+    };
+    console.log("EVent Date", eventData)
+    try {
+      await CreateEvent(eventData); // API call to save event
+      toast.success("Event successfully created!");
+      navigate("/home/myevent");
+    } catch (error) {
+      console.error("Error creating event: ", error);
+      toast.error("Error creating event.");
+    }
   };
-
 
 
 
 
   return (
-    <>
-      <div className='border-2'>
-        <div className='flex flex-col p-2 items-center'>
-          <div className='flex justify-center mb-4 flex-col'>
-            <div className='w-full'>
-              <input
-                className='w-full p-2 border-2 rounded-xl '
-                placeholder='Event Name'
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-              />
-            </div>
+    <div className='max-w-[1320px] flex items-start'>
+      <div className='w-[35%] flex-col flex h-[100vh] overflow-y-scroll'>
+        <p className='text-2xl text-center font-bold text-[#313893]'>Create An Event</p>
+        <Input
+          name="Event Name"
+          isTable={false}
+          type={"text"}
+          placeholder={"Event your event name"}
+          value={eventName}
+          onChange={(e) => setEventName(e.target.value)}
+        />
+        <Input
+          name="Event Date"
+          isTable={false}
+          type={"date"}
+          placeholder={"Event your event date"}
+          value={eventDate}
+          onChange={(e) => setEventDate(e.target.value)}
+        />
+        <Input
+          name="Start Time"
+          isTable={false}
+          type={"time"}
+          placeholder={"Event your event start time"}
+          value={startTime}
+          onChange={(e) => setStartTime(e.target.value)}
+        />
+        <Input
+          name="End Time"
+          isTable={false}
+          type={"time"}
+          placeholder={"Event your event end Time"}
+          value={endTime}
+          onChange={(e) => setEndTime(e.target.value)}
+        />
+        <Input
+          name="Event Description"
+          isTable={false}
+          type={"text"}
+          placeholder={"Event your event description"}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        {columns.map((col, index) => (
+  <div key={index} className="flex w-full justify-start items-center relative">
+    <Input
+      type="text"
+      isTable={false}
+      name={col.toLowerCase().replace(/\s+/g, '')} // Normalize key
+      value={newRow[col.toLowerCase().replace(/\s+/g, '')] || ''}
+      onChange={(e) => handleRowInputChange(e, col)}
+      placeholder={col}
+    />
+    {index >= 2 && (
+      <button
+        onClick={() => handleColumnDelete(index)}
+        className="absolute right-2 top-1/2 transform -translate-y-1/2"
+      >
+        <MdDelete className="text-red-500 hover:text-red-700 text-2xl -ml-12 mt-6" />
+      </button>
+    )}
+  </div>
+))}
 
-            <input
-              type="time"
-              className="p-2 w-full rounded-xl mx-2 border-2"
-              value={startTime}
-              onChange={handleStartTimeChange}
-              placeholder="Start Time"
-            />
-            <input
-              type="time"
-              className="p-2 border-2 w-full mx-2 rounded-xl"
-              value={endTime}
-              onChange={handleEndTimeChange}
-              placeholder="End Time"
-            />
-          </div>
-          <input
-            type="text"
-            className="p-2 border-2 w-[70%] flex rounded py-4"
-            placeholder="Description"
-            value={description}
-            onChange={(e)=>setDescription(e.target.value)}
-          />
-        </div>
-        <div className='p-2'>
-          <div className='flex flex-col items-center mb-4'>
-            {columns.map((col, index) => (
-              <div key={index} className="flex flex-row mb-2">
-                <input
-                  name={col.toLowerCase().replace(" ", "")}
-                  value={newItem[col.toLowerCase().replace(" ", "")] || ''}
-                  onChange={handleInputChange}
-                  placeholder={col}
-                  className="p-2 border-2 rounded-xl"
-                />
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
+        <div className='flex flex-wrap gap-4 items-center my-4 mx-auto justify-center'>
+          <Button
+            type="add"
             onClick={handleRowAdd}
-            className="p-2 bg-black text-white mb-4 rounded-md mx-4"
-          >
-            Add Item
-          </button>
-          <button
-            type="button"
+            label={" Add Item"}
+          />
+          <Button
+            type="add"
             onClick={handleColumnAdd}
-            className="p-2 bg-black text-white rounded-md"
-          >
-            Add More Columns
-          </button>
-        </div>
-        <div className='flex items-center justify-center'>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className='p-2 bg-black text-white rounded-md'
-          >
-            Submit
-          </button>
-          <label className='p-2 ml-2 bg-black text-white rounded-md cursor-pointer'>
+            label={"Add More Columns"}
+          />
+          <label className='bg-gray-300 text-black hover:bg-gray-400 py-2 px-6 rounded-lg transition-all duration-150 cursor-pointer'>
             Upload Excel
             <input
               type='file'
@@ -273,55 +285,64 @@ function CreateEvents() {
             />
           </label>
         </div>
+        <div className='p-4 mx-auto max-w-full'>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            label={"Submit"}
+          />
+        </div>
       </div>
-
-      <div className='max-w-[1000px] max-h-[1000px] overflow-scroll'>
-        <table className='border-collapse border-2 w-full mt-4'>
+      <div className='w-[65%] h-[100vh] overflow-scroll'>
+        <table className="w-full h-full border border-gray-200">
           <thead>
             <tr>
               {columns.map((col, index) => (
-                <th key={index} className='border-2 p-2'>
-                  <input
+                <th
+                  key={index}
+                  className="border p-2 relative text-left w-[200px]" // Ensure uniform column widths
+                >
+                  <Input
                     type="text"
                     value={col}
+                    isTable={true}
                     onChange={(e) => handleColumnEdit(index, e)}
-                    className="p-2 border-2 rounded-xl"
+                    className="w-full" // Full-width input for proper alignment
                   />
                   {index >= 2 && (
                     <button
-                      type="button"
                       onClick={() => handleColumnDelete(index)}
-                      className="ml-2 bg-red-500 text-white p-1 rounded-md"
+                      className="absolute top-1/2 right-2 transform -translate-y-1/2"
                     >
-                      Delete
+                      <MdDelete className="text-red-500 hover:text-red-700 text-2xl" />
                     </button>
                   )}
                 </th>
               ))}
-              <th className='border-2 p-2'>Actions</th>
+              <th className="border p-2 w-[150px] text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
+              <tr key={rowIndex} className="border">
                 {columns.map((col, colIndex) => {
-                  const key = col.toLowerCase().replace(" ", "");
+                  const colKey = col.toLowerCase().replace(/\s+/g, ''); // Normalize column names
                   return (
-                    <td key={colIndex} className="border-2 p-2">
-                      <input
+                    <td key={colIndex} className="border p-2">
+                      <Input
                         type="text"
-                        value={row[key] || ''}
-                        onChange={(e) => handleCellEdit(rowIndex, key, e.target.value)}
-                        className="p-2 border-2 rounded-xl"
+                        isTable={true}
+                        value={row[colKey] || ''}
+                        onChange={(e) => handleCellEdit(rowIndex, colKey, e.target.value)}
+                        className="w-full"
                       />
                     </td>
                   );
                 })}
-                <td className="border-2 p-2">
+                <td className="border p-2 text-center">
                   <button
-                    type="button"
                     onClick={() => handleRowDelete(rowIndex)}
-                    className="p-2 bg-red-500 text-white rounded-md"
+                    className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                   >
                     Delete
                   </button>
@@ -329,9 +350,10 @@ function CreateEvents() {
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
-    </>
+    </div>
   );
 }
 

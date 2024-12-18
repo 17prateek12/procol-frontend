@@ -42,14 +42,14 @@ const handleSubmit = async (e) => {
   try {
     // Call the register API
     console.log("CALLING API");
-    const { user, accessToken } = await registerUser(formData); // Assuming registerUser returns user info and token
+    const { user, token } = await registerUser(formData); // Assuming registerUser returns user info and token
 
     console.log('User registered successfully:', user);
 
     setIsSubmitting(false);
 
     // Redirect to the home page
-    navigate('/home');
+    navigate('/');
   } catch (err) {
     setError(err.message || 'An error occurred. Please try again.');
     setIsSubmitting(false);
@@ -120,7 +120,7 @@ const handleSubmit = async (e) => {
 
         <p className="mt-4 text-center text-sm text-gray-600">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-500 hover:text-blue-700">
+          <a href="/" className="text-blue-500 hover:text-blue-700">
             Login here
           </a>
         </p>
