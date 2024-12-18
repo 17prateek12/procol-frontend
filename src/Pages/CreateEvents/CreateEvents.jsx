@@ -161,41 +161,50 @@ function CreateEvents() {
   
 
   // Submit the Form
-  const handleSubmit = async () => {
-    if (!eventName || !eventDate || !startTime || !endTime) {
-      toast.error("Please provide all required event details.");
-      return;
-    }
+// Instead of wrapping row data in a Map or `data` object, send it directly
+const handleSubmit = async () => {
+  if (!eventName || !eventDate || !startTime || !endTime) {
+    toast.error("Please provide all required event details.");
+    return;
+  }
 
-    const startDateTime = new Date(`${eventDate}T${startTime}`);
-    const endDateTime = new Date(`${eventDate}T${endTime}`);
+  const startDateTime = new Date(`${eventDate}T${startTime}`);
+  const endDateTime = new Date(`${eventDate}T${endTime}`);
 
-    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-      toast.error("Invalid date or time.");
-      return;
-    }
+  if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+    toast.error("Invalid date or time.");
+    return;
+  }
 
-    const eventData = {
-      eventName,
-      eventDate: new Date(eventDate),
-      startTime: startDateTime.toISOString(),
-      endTime: endDateTime.toISOString(),
-      description,
-      columns: columns, // Dynamic column names
-      rows: rows, // Rows as maps
-      createdBy: userId,
-    };
-    console.log("EVent Date", eventData)
-    try {
-      await CreateEvent(eventData); // API call to save event
-      toast.success("Event successfully created!");
-      navigate("/home/myevent");
-    } catch (error) {
-      console.error("Error creating event: ", error);
-      toast.error("Error creating event.");
-    }
+  // Fix the rows structure by sending them directly as key-value pairs
+  const eventData = {
+    eventName,
+    eventDate: new Date(eventDate),
+    startTime: startDateTime.toISOString(),
+    endTime: endDateTime.toISOString(),
+    description,
+    columns, // dynamic columns
+    rows: rows.map(row => {
+      return columns.reduce((acc, col) => {
+        const key = col.toLowerCase().replace(/\s+/g, ''); // Normalize column name
+        acc[key] = row[key] || ''; // Ensure the key exists
+        return acc;
+      }, {});
+    }),
+    createdBy: userId,
   };
 
+  console.log("Event Data to Submit:", eventData);
+
+  try {
+    await CreateEvent(eventData); // API call to save event
+    toast.success("Event successfully created!");
+    navigate("/home/myevent");
+  } catch (error) {
+    console.error("Error creating event: ", error);
+    toast.error("Error creating event.");
+  }
+};
 
 
 
